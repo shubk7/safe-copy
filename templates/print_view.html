@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Print PDF</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+      <script>
+        function doPrint() {
+            window.print();
+        }
+      </script>
+      <style>
+        body, html{ height: 100%; margin: 0; }
+        .pdf-framework{ width: 100%; height: calc(100%-60px); border: none;}
+        .controls{ padding: 8px; text-align: center;}
+        </style>
+</head>
+<body>
+    <div class="controls">
+        <!--print button removed to enforce server side printing only-->
+        <form method="post" action="{{url_for('confirm_print', taken=token)}}" style="display:inline">
+            <button type="submit" class="danger"> Confirm Printed ~ Delete file and close</button>
+        </form>     </div>">
+
+        <embed src="{{ file_url }}" type="application/pdf" class="pdf-frame"></embed>
+</body>
+</html>
