@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Safe Copy - Upload PDF</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-size: 1rem; padding: 12px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        label { display:block; margin-bottom:8px; font-size: 1.05rem; }
+        input[type="file"] { width: 100%; font-size: 1rem; padding: 10px; }
+        button { display: block; width: 100%; padding: 14px 16px; font-size: 1.05rem; border-radius: 8px; margin-top: 12px; }
+        .message, .error { font-size: 1.05rem; margin-top: 12px; }
+        footer { margin-top: 16px; font-size: 0.95rem; color: #555; }
+        @media (min-width: 600px) {
+          button { width: auto; min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload PDF</h1>
+        
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        {% if message %}
+            <p class="message">{{ message }}</p>
+            <form method="post" action="{{ url_for('confirm_print', token=token) }}" onsubmit="return confirm('Confirm printed and delete uploaded file? This cannot be undone.');">
+                <button type="submit" class="danger">Confirm printed — delete file & close</button>
+            </form>
+        {% else %}
+            <form method="post" enctype="multipart/form-data">
+                <label for="file">Select PDF file (only .pdf allowed)</label>
+                <input id="file" type="file" name="file" accept="application/pdf" required />
+                <button type="submit">Upload PDF</button>
+            </form>
+        {% endif %}
+        
+        <footer>
+          <small>Only PDF files allowed. The file will be deleted after printing by the shopkeeper.</small>
+        </footer>
+    </div>
+</body>
+</html>

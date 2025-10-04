@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Safe Copy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .qr-area img { width: 220px; height: 220px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Safe Copy</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, msg in messages %}
+                        <li class="flash {{ category }}">{{ msg }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <section class="card">
+            <h2>1. Ngrok setup</h2>
+            {% if has_token %}
+                <p>Ngrok authtoken configured (persisted).</p>
+                <form method="post" action="{{ url_for('clear_ngrok') }}">
+                    <button type="submit">Clear Ngrok authtoken</button>
+                </form>
+            {% else %}
+                <form method="post" action="{{ url_for('setup_ngrok') }}">
+                    <label>Enter ngrok authtoken (from https://dashboard.ngrok.com/get-started/your-authtoken)</label>
+                    <input type="text" name="authtoken" placeholder="ngrok authtoken" required />
+                    <button type="submit">Save authtoken</button>
+                </form>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <h2>2. Start single-use upload session</h2>
+            {% if active %}
+                <p><strong>Active session in progress.</strong></p>
+                {% if uploaded %}
+                    <p>Uploaded file: <strong id="uploaded_name">{{ uploaded_name }}</strong></p>
+                {% else %}
+                    <p id="waiting_text">Waiting for customer to upload a PDF using the QR code below.</p>
+                {% endif %}
+                <form method="post" action="{{ url_for('stop_session') }}">
+                    <button type="submit">Stop session and shutdown</button>
+                </form>
+            {% else %}
+                <form method="post" action="{{ url_for('start_session') }}">
+                    <button type="submit">Start new single-use session</button>
+                </form>
+            {% endif %}
+        </section>
+        
+        <section class="card" id="qr_card" {% if not active %}style="display:none"{% endif %}>
+            <h2>Upload link & QR (show to customer)</h2>
+            <p>Customer should scan this QR code or open the link on their phone to upload a PDF.</p>
+            <div class="qr-area">
+                <img id="qr_img" src="{{ qr }}" alt="QR code" />
+                <p class="small"><a id="upload_link" href="{{ upload_link }}" target="_blank">{{ upload_link }}</a></p>
+            </div>
+        </section>
+
+        <section class="card" id="print_card" {% if not (active and uploaded) %}style="display:none"{% endif %}>
+            <h2>3. Print</h2>
+            <p>Preview the uploaded PDF and print from your browser.</p>
+            <p><strong id="uploaded_name_2">{{ uploaded_name }}</strong></p>
+            <p>
+                <a class="btn" id="open_print" href="{{ print_url or '#' }}" target="_blank">Open print view (new tab)</a>
+            </p>
+            <form method="post" id="confirm_form" action="{{ confirm_url or '#' }}">
+                <button type="submit" class="danger">Confirm printed — delete file & close</button>
+            </form>
+        </section>
+
+
+        <footer>
+            <small>Single-customer single-use session. PDF-only. The link stays valid until shopkeeper confirms printed.</small>
+        </footer>
+    </div>
+
+    <script>
+        async function fetchStatus(){
+            try {
+                const res = await fetch('/admin_status', {cache: "no-store"});
+                if(!res.ok) return;
+                const j = await res.json();
+
+                const qrCard = document.getElementById('qr_card');
+                const printCard = document.getElementById('print_card');
+                const uploadLinkEl = document.getElementById('upload_link');
+                const qrImg = document.getElementById('qr_img');
+                const uploadedName = document.getElementById('uploaded_name');
+                const uploadedName2 = document.getElementById('uploaded_name_2');
+                const openPrint = document.getElementById('open_print');
+                const confirmForm = document.getElementById('confirm_form');
+                
+                if(j.active){
+                    qrCard.style.display = 'block';
+                    if(j.qr){
+                        qrImg.src = j.qr;
+                    } else {
+                        qrImg.src = '';
+                    }
+                    if(j.upload_link){
+                        uploadLinkEl.href = j.upload_link;
+                        uploadLinkEl.textContent = j.upload_link;
+                        openPrint.href = "/print/" + "";
+                    }
+                } else {
+                    qrCard.style.display = 'none';
+                    printCard.style.display = 'none';
+                }
+
+                if(j.uploaded){
+                    printCard.style.display = 'block';
+                    if(uploadedName) uploadedName.textContent = j.uploaded_name || '';
+                    if(uploadedName2) uploadedName2.textContent = j.uploaded_name || '';
+                    if(j.upload_link){
+                        try{
+                            const parts = j.upload_link.split('/');
+                            const token = parts[parts.length - 1];
+                            openPrint.href = "/print/" + token;
+                            confirmForm.action = "/confirm_part/" + token;
+                        } catch(e){}
+                    }
+                } else {
+                    if(uploadedName) uploadedName.textContent = '';
+                    if(uploadedName2) uploadedName2.textContent = '';
+                    printCard.style.display = 'none';
+                }
+            } catch(e){}
+        }
+        setInterval(fetchStatus, 3000);
+        fetchStatus();
+    </script>
+</body>
+</html>
